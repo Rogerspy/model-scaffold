@@ -130,7 +130,7 @@ dmypy.json
 .pyre/
 
 # project
-.logs/
-.pretrained/
-.checkpoints/
-.datasets/
+logs/
+pretrained/
+checkpoints/
+# datasets/
