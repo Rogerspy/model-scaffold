@@ -133,4 +133,4 @@ dmypy.json
 logs/
 pretrained/
 checkpoints/
-# datasets/
+datasets/

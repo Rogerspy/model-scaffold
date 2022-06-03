@@ -56,13 +56,14 @@ if __name__ == '__main__':
     config_obj = import_module(f'cortex.configs.{model_name}_config')
     processor_obj = import_module(f'cortex.data_processors.{model_name}_processor')
     trainer_obj = import_module(f'cortex.trainers.{model_name}_trainer')
+    tokenizer_obj = import_module(f'cortex.tokenization.{model_name}_tokenizer')
     
     # 加载模型配置文件
     config = config_obj.Config(dataset)  
     config.require_improvement = require_improvement
     
     # 加载 tokenizer
-    config.tokenizer = jieba.lcut
+    config.tokenizer = tokenizer_obj.tokenizer(config)
     
     # 加载/生成词表
     if hasattr(config, 'vocab_path'):
@@ -70,7 +71,7 @@ if __name__ == '__main__':
             with open(config.vocab_path, encoding='utf8') as f:
                 vocab = json.load(f)
         else:
-            vocab_obj = import_module(f'cortex.data_processors.vocabulary')
+            vocab_obj = import_module('cortex.data_processors.vocabulary')
             vocab = vocab_obj.build_vocab(
                 file_path=config.train_path,
                 tokenizer=jieba.lcut,
@@ -81,8 +82,7 @@ if __name__ == '__main__':
         
     # 数据处理/加载
     data_loader = processor_obj.DataLoader(config)
-    train, test, dev = data_loader.load_data()
-    train_iter = processor_obj.DatasetIterater(dataset=train, config=config)
+    train_loader = data_loader.train_dataset
     test_iter = processor_obj.DatasetIterater(dataset=test, config=config)
     dev_iter = processor_obj.DatasetIterater(dataset=dev, config=config)
     
@@ -93,8 +93,13 @@ if __name__ == '__main__':
 
     # train
     model = model_obj.Model(config).to(config.device)
-    trainer = trainer_obj.Trainer(config, model)
+    # predictor
+    if config.model_name == 'idbr':
+        predictor = model_obj.Predictor(config).to(config.device)
+        trainer = trainer_obj.Trainer(config, model, predictor)
+    else:
+        trainer = trainer_obj.Trainer(config, model)
     # if model_name != 'Transformer':
     #     init_network(model)
     print(model)
-    # trainer.train(train_iter, dev_iter, test_iter)
+    trainer.train(train_iter, dev_iter, test_iter)

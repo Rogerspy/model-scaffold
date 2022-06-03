@@ -39,7 +39,7 @@ class Model(nn.Module):
         self.cls_classifier = nn.Sequential(
             nn.Linear(
                 self.config.hidden_size * 2,
-                self.config.n_class
+                self.config.num_cls_classes
             )
         )
         
@@ -83,6 +83,9 @@ class Model(nn.Module):
         
         
 class Predictor(nn.Module):
+    """
+    Next Sentence Prediction
+    """
     def __init__(self, config):
         super(Predictor, self).__init__()
         self.config = config
@@ -90,7 +93,7 @@ class Predictor(nn.Module):
         self.dis = torch.nn.Sequential(
             torch.nn.Linear(
                 self.config.hidden_size, 
-                self.config.num_class
+                self.config.num_nsp_classes
             )
         )
 
