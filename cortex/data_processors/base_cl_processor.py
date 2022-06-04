@@ -39,19 +39,19 @@ class DataLoader(object):
                     contents.append(content)
                     labels.append(label)
         labels = torch.LongTensor(labels)
-        token_result = self.tokenizer(
+        token_result = self.config.tokenizer(
             contents, 
             max_length=self.config.max_len, 
             padding='max_length',
             truncation='longest_first',
-            return_tensor='pt'
+            return_tensors='pt'
         )
         # shuffle
         index = torch.randperm(len(labels))
-        input_ids = token_result['input_ids'][index, :]
-        token_type_ids = token_result['token_type_ids'][index, :]
-        attention_mask = token_result['attention_mask'][index, :]
-        labels = labels[index, :]
+        input_ids = token_result['input_ids'][index, :].to(self.config.device)
+        token_type_ids = token_result['token_type_ids'][index, :].to(self.config.device)
+        attention_mask = token_result['attention_mask'][index, :].to(self.config.device)
+        labels = labels[index].to(self.config.device)
         return input_ids, token_type_ids, attention_mask, labels
     
     def test_dataset(self, path_dict):
@@ -61,10 +61,12 @@ class DataLoader(object):
             path_dict (dict): test_path or dev_path.
 
         Returns:
-            _type_: _description_
+            dict: 
+                {task_name: (input_ids, token_type_ids, mask, lables)}
         """
         contents, labels = {}, {}
         for task in self.config.task_names:
+            labels = []
             with open(path_dict[task], encoding='utf8') as f:
                 for line in f:
                     line = json.loads(line)
@@ -72,25 +74,22 @@ class DataLoader(object):
                     label = self.label_id[line['label']]
                     if task not in contents:
                         contents[task] = [content]
-                        labels[task] = [label]
                     else:
                         contents[task].append(content)
-                        labels[task].append(label)
-            
-            label_tensor = torch.LongTensor(labels[task])
-            token_tensor = self.tokenizer(
+                    labels.append(label)
+            label_tensor = torch.LongTensor(labels).to(self.config.device)
+            token_tensor = self.config.tokenizer(
                 contents[task], 
                 max_length=self.config.max_len, 
                 padding='max_length',
                 truncation='longest_first',
-                return_tensor='pt'
+                return_tensors='pt'
             )
-            input_ids = token_tensor['input_ids']
-            token_type_ids = token_tensor['token_type_ids']
-            attention_mask = token_tensor['attention_mask']
-            contents[task] = (input_ids, token_type_ids, attention_mask)
-            labels[task] = label_tensor
-        return contents, labels
+            input_ids = token_tensor['input_ids'].to(self.config.device)
+            token_type_ids = token_tensor['token_type_ids'].to(self.config.device)
+            attention_mask = token_tensor['attention_mask'].to(self.config.device)
+            contents[task] = (input_ids, token_type_ids, attention_mask, label_tensor)
+        return contents
     
     # def load_data(self,):
     #     train_data = self.build_dataset(self.config.train_path)
@@ -115,7 +114,7 @@ class DatasetIterater(object):
 
     def __next__(self):
         # 如果batch外还剩下一点句子, 并且迭代到了最后一个batch
-        if self.residue and self.index == self.n_dataset: 
+        if self.residue and self.index == self.n_batch: 
             # 直接拿出剩下的所有数据
             residue_input_ids = self.input_ids[self.index * self.config.batch_size: len(self.dataset)]
             residue_token_type_ids = self.token_type_ids[self.index * self.config.batch_size: self.n_samples]
@@ -149,9 +148,9 @@ class DatasetIterater(object):
 
     def __len__(self):
         if self.residue:
-            return self.n_dataset + 1
+            return self.n_batch + 1
         else:
-            return self.n_dataset
+            return self.n_batch
 
 
 class TaskDatasetIterater(object):

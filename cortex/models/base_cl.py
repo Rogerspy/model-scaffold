@@ -22,8 +22,8 @@ class Model(nn.Module):
         
         self.classifier = nn.Sequential(
             nn.Linear(
-                self.config.hidden_size,
-                self.config.n_class
+                self.config.encoder_size,
+                self.config.n_classes
             )
         )
         

@@ -12,7 +12,7 @@
 import random
 
 
-def ReservoirSampling(source, k):
+def reservoir_sampling(source, k):
     samples = []
     n = 0 
     # try to initial samples 
@@ -34,11 +34,6 @@ def ReservoirSampling(source, k):
         n += 1         
     return samples 
 
-
-def Main():
-    source = Source()
-    samples = ReservoirSampling(source, 10)
-    print(samples)
-
 if __name__ == '__main__':
-    Main()
+    s = [[random.randint(1,10) for _ in range(5)] for _ in range(10)]
+    print(reservoir_sampling(s, 2))

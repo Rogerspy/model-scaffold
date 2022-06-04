@@ -17,8 +17,8 @@ import random
 def write_to(data, fpath):
     with open(fpath, 'w+', encoding='utf8') as f:
         for line in data:
-            line = json.dumps(line, ensure_ascii=False)
-            f.write(f'{line}\n')
+            # line = json.dumps(line, ensure_ascii=False)
+            f.write(line)
 
 
 def split_data(data, save_dir, test_valid_rate=0.1):

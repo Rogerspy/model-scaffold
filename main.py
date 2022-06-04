@@ -74,17 +74,24 @@ if __name__ == '__main__':
             vocab_obj = import_module('cortex.data_processors.vocabulary')
             vocab = vocab_obj.build_vocab(
                 file_path=config.train_path,
-                tokenizer=jieba.lcut,
+                tokenizer=config.tokenizer,
                 save_dir=config.vocab_path
             )
         config.vocab = vocab
         config.n_vocab = len(vocab)
         
     # 数据处理/加载
-    data_loader = processor_obj.DataLoader(config)
-    train_loader = data_loader.train_dataset
-    test_iter = processor_obj.DatasetIterater(dataset=test, config=config)
-    dev_iter = processor_obj.DatasetIterater(dataset=dev, config=config)
+    if config.model_name == 'base_cl':
+        data_loader = processor_obj.DataLoader(config)
+        train_loader = data_loader.train_dataset
+        test_loader = data_loader.test_dataset(config.test_path) # {task_name: tensor}
+        dev_loader = data_loader.test_dataset(config.dev_path)  # {task_name: tensor}
+    else:
+        data_loader = processor_obj.DataLoader(config)
+        train, test, dev = data_loader.load_data()
+        train_iter = processor_obj.DatasetIterater(dataset=train, config=config)
+        test_iter = processor_obj.DatasetIterater(dataset=test, config=config)
+        dev_iter = processor_obj.DatasetIterater(dataset=dev, config=config)
     
     # 固定随机因子，保证每次结果一样
     torch.manual_seed(1)
@@ -102,4 +109,7 @@ if __name__ == '__main__':
     # if model_name != 'Transformer':
     #     init_network(model)
     print(model)
-    trainer.train(train_iter, dev_iter, test_iter)
+    if config.model_name == 'base_cl':
+        trainer.train(train_loader, test_loader, dev_loader)
+    else:
+        trainer.train(train_iter, dev_iter, test_iter)
