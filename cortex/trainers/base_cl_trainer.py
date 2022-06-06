@@ -312,8 +312,7 @@ class Memory(object):
     def get_mini_batch(self):
         for idx in range(len(self.labels)):
             tokens = self.examples[idx]
-            token_types = self.token_type_ids[ids]
+            token_types = self.token_type_ids[idx]
             mask = self.mask[idx]
             yield tokens, token_types, mask
-    
     

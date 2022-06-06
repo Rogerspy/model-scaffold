@@ -61,7 +61,7 @@ class Config(object):
         self.log_path = os.path.join(base_dir, f'../logs/{self.model_name}_{timestamp}.txt')
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')   # 设备
         self.tokenizer = None
-                                             # 随机失活
+                                             
         self.require_improvement = 1000                                 # 若超过1000batch效果还没提升，则提前结束训练
         self.n_classes = len(self.class_list)   
         self.n_tasks = len(self.task_names)
