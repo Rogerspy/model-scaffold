@@ -3,9 +3,9 @@
 '''
 @File    :   base_cl_args.py
 @Time    :   2022/06/02 17:30:43
-@Author  :   csong-idea
-@Email   :   songchao@idea.edu.cn
-@Copyright : International Digital Economy Academy (IDEA)
+@Author  :   rogerspy
+@Email   :   rogerspy@163.com
+@Copyright : Rogerspy
 '''
 
 
@@ -52,6 +52,10 @@ class Config(object):
             }                               
         self.class_list = [x.strip() for x in open(
             os.path.join(base_dir, dataset, 'csldcp/labels_all.txt'), encoding='utf8').readlines()]              # 类别名单
+        self.label2id, self.id2label = {}, {}
+        for idx, label in enumerate(self.class_list):
+            self.label2id[label] = idx
+            self.id2label[idx] = label
         self.checkpoint_path = os.path.join(base_dir, f'../checkpoints/{self.model_name}.ckpt')        # 模型训练结果
         self.pretrained_path = os.path.join(base_dir, f'../pretrained/chinese-bert-wwm')
         self.log_path = os.path.join(base_dir, f'../logs/{self.model_name}_{timestamp}.txt')

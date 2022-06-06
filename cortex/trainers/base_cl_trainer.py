@@ -3,13 +3,12 @@
 '''
 @File    :   base_cl__trainer.py
 @Time    :   2022/06/02 12:39:36
-@Author  :   csong-idea
-@Email   :   songchao@idea.edu.cn
-@Copyright : International Digital Economy Academy (IDEA)
+@Author  :   rogerspy
+@Email   :   rogerspy@163.com
+@Copyright : Rogerspy
 '''
 
 
-import re
 import json
 import torch
 import torch.nn as nn
@@ -19,6 +18,8 @@ from transformers import AdamW, get_constant_schedule_with_warmup
 
 from cortex.utils import Logs
 from cortex.replay import reservoir_sampling
+from cortex.replay import kmeans
+from cortex.replay import task_label
 from cortex.data_processors.base_cl_processor import DatasetIterater
 
 
@@ -49,6 +50,19 @@ class Trainer(object):
         # logger
         self.logger = Logs(self.config.log_path)
           
+    def __get_model_features(self, buffer):
+        """
+        load best model and calculate the features
+        """
+        self.__model.load_state_dict(
+            torch.load(self.config.checkpoint_path)
+        )
+        features_batches = []
+        for tokens, token_types, mask in buffer.get_mini_batch():
+            _, features = self.__model(tokens, mask, token_types)
+            features_batches.append(features.cpu().numpy())
+        return np.concatenate(features_batches, axis=0)
+          
     def train_step(self, train_iter, test_iter, dev_iter, task_name):
         self.__model.train() 
         self.__model.zero_grad()
@@ -60,9 +74,9 @@ class Trainer(object):
         for epoch in range(self.config.epochs):
             print(f'===== Epoch [{epoch + 1} / {self.config.epochs}] | {task_name} =====')
             # scheduler.step() # 学习率衰减
+            buffer = Memory(self.config)
             for train_x, token_type, mask, labels in train_iter:
-                # print(labels)
-                # buffer.append(train_x, token_type, mask, labels)
+                buffer.append(train_x, token_type, mask, labels, task_name)
                 outputs, embedding = self.__model(train_x, mask, token_type)
                 loss = self.loss_func(outputs, labels)
                 loss.backward()
@@ -183,35 +197,123 @@ class Trainer(object):
         self.logger.info("===== Confusion Matrix =====")
         self.logger.info(test_confusion)
     
-    def select_samples_to_store(self, task_name, categorical=None):
+    def select_samples_to_store(self, buffer, task_name, categorical=None):
+        """
+
+        Args:
+            task_name (str): 任务名
+            categorical (str, optional): 样本采样策略. Defaults to None.
+                [
+                    rs,  # 蓄水池
+                    kmeans,  # kmeans
+                    lb,  # label-based 基于文本原始标签
+                ]
+        """
         if categorical == 'rs':
             with open(self.config.train_path[task_name], encoding='utf8') as f:
                 resource = f.readlines()
-                replay_sample = reservoir_sampling(resource, self.config.replay_num)
+                replay_sample = reservoir_sampling.reservoir_sampling(resource, self.config.replay_num)
                 with open(self.config.replay_path[task_name], 'w+', encoding='utf8') as f:
                     for line in replay_sample:
                         line = json.dumps(line, ensure_ascii=False)
                         f.write(line+'\n')
-                    
-    
-    
-# class Memory(object):
-#     def __init__(self, config) -> None:
-#         self.config = config
-#         self.examples = []
-#         self.token_type_ids = []
-#         self.masks = []
-#         self.labels = []
-#         self.tasks = []
+        elif categorical == 'kmeans':
+            # 从最优模型中计算句子特征
+            features = self.__get_model_features(buffer)
+            # 计算 kmeans
+            label_pred, centroids = kmeans.kmeans(features, self.config.n_cluater)
+            texts, labels = [], []
+            for cluster_id in range(self.config.n_cluster):
+                index = [i for i in range(len(label_pred)) if label_pred[i] == cluster_id]
+                x_distance = []
+                for j in index:
+                    dis = np.sqrt(np.sum(np.square(centroids[cluster_id] - features[j])))
+                    x_distance.append((dis, j))
+                x_dist_sort = sorted(x_distance, key=lambda x: x[0])[:self.config.replay_num]
+                texts.extend([buffer.raw_texts[idx] for _, idx in x_dist_sort])
+                labels.extend([buffer.labels[idx] for _, idx in x_dist_sort])
+
+            with open(self.config.replay_path[task_name], 'w+', encoding='utf8') as f:
+                for idx in range(len(texts)):
+                    line = {
+                        'content': texts[idx],
+                        'label': labels[idx]
+                    }
+                    line = json.dumps(line, ensure_ascii=False)
+                    f.write(line+'\n')
+        elif categorical == 'lb':
+            # 从最优模型中计算句子特征
+            features = self.__get_model_features(buffer)
+            # 计算类别中心点    
+            centroids = task_label(features, buffer.labels)
+            texts, labels = [], []
+            for label in buffer.labels:
+                index = [i for i in range(len(buffer.labels)) if buffer.labels[i] == label]
+                x_distance = []
+                for j in index:
+                    dis = np.sqrt(np.sum(np.square(centroids[cluster_id] - features[j])))
+                    x_distance.append((dis, j))
+                x_dist_sort = sorted(x_distance, key=lambda x: x[0])[:self.config.replay_num]
+                texts.extend([buffer.raw_texts[idx] for _, idx in x_dist_sort])
+                labels.extend([buffer.labels[idx] for _, idx in x_dist_sort])
+
+            with open(self.config.replay_path[task_name], 'w+', encoding='utf8') as f:
+                for idx in range(len(texts)):
+                    line = {
+                        'content': texts[idx],
+                        'label': labels[idx]
+                    }
+                    line = json.dumps(line, ensure_ascii=False)
+                    f.write(line+'\n')
+            
+
+class Memory(object):
+    """
+    现在只考虑保存当前任务数据，
+    历史数据先直接保存成文件。
+
+    Args:
+        object (_type_): _description_
+    """
+    def __init__(self, config) -> None:
+        self.config = config
+        self.examples = []
+        self.token_type_ids = []
+        self.mask = []
+        self.raw_texts = []
+        self.labels = []
+        self.tasks = []
         
-#     def append(self, examples, token_type_ids, masks, labels, task_name):
-#         examples = self.config.tokenizer.batch_decode(examples)
-#         p = re.compile(f'{self.config.tokenizer.pad_token}|{self.config.tokenizer.sep_token}|{self.config.tokenizer.cls_token}|\s')
-#         examples = [re.sub(p, '', exam) for exam in examples]
-#         self.examples.extend(examples)
-#         self.token_type_ids.extend(token_type_ids.cpu().to_list())
-#         self.masks.extend(masks.cpu().to_list())
-#         self.labels.extend(labels.cpu().to_list())
-#         self.tasks.extend([task_name] * examples.size(0))
+    def append(
+        self, 
+        examples: torch.Tensor, 
+        token_type_ids: torch.Tensor, 
+        mask: torch.Tensor,
+        labels: torch.Tensor, 
+        task_name: str
+    ):
+        self.examples.append(examples)
+        self.token_type_ids.append(token_type_ids)
+        self.mask.append(mask)
+        # 保存原始文本和标签
+        texts = self.config.tokenizer.batch_decode(
+            self.examples, 
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=True
+        )
+        texts = [x.replace(' ', '') for x in examples]
+        self.raw_texts.extend(texts)
+        labels = labels.cpu().to_list()
+        labels = [self.config.id2lable[idx] for idx in labels]
+        self.labels.extend(labels)
+        self.tasks.append([task_name] * examples.size(0))
+        
+        
+    def get_mini_batch(self):
+        for idx in range(len(self.labels)):
+            tokens = self.examples[idx]
+            token_types = self.token_type_ids[ids]
+            mask = self.mask[idx]
+            yield tokens, token_types, mask
     
     

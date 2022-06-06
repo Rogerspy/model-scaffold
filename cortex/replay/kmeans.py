@@ -3,9 +3,9 @@
 '''
 @File    :   kmeans.py
 @Time    :   2022/06/01 15:19:26
-@Author  :   csong-idea
-@Email   :   songchao@idea.edu.cn
-@Copyright : International Digital Economy Academy (IDEA)
+@Author  :   rogerspy
+@Email   :   rogerspy@163.com
+@Copyright : Rogerspy
 '''
 
 

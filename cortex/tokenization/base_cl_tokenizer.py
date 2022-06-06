@@ -3,9 +3,9 @@
 '''
 @File    :   base_cl_tokenizer.py
 @Time    :   2022/06/03 07:38:14
-@Author  :   csong-idea
-@Email   :   songchao@idea.edu.cn
-@Copyright : International Digital Economy Academy (IDEA)
+@Author  :   rogerspy
+@Email   :   rogerspy@163.com
+@Copyright : Rogerspy
 '''
 
 from transformers import BertTokenizer

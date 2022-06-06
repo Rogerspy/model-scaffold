@@ -3,9 +3,9 @@
 '''
 @File    :   idbr_processor.py
 @Time    :   2022/05/26 22:14:57
-@Author  :   csong-idea
-@Email   :   songchao@idea.edu.cn
-@Copyright : International Digital Economy Academy (IDEA)
+@Author  :   rogerspy
+@Email   :   rogerspy@163.com
+@Copyright : Rogerspy
 '''
 
 

@@ -3,9 +3,9 @@
 '''
 @File    :   idbr_dataset.py
 @Time    :   2022/05/27 15:34:32
-@Author  :   csong-idea
-@Email   :   songchao@idea.edu.cn
-@Copyright : International Digital Economy Academy (IDEA)
+@Author  :   rogerspy
+@Email   :   rogerspy@163.com
+@Copyright : Rogerspy
 '''
 
 import json
@@ -116,7 +116,7 @@ class DatasetIterater(object):
         # 如果batch外还剩下一点句子, 并且迭代到了最后一个batch
         if self.residue and self.index == self.n_batch: 
             # 直接拿出剩下的所有数据
-            residue_input_ids = self.input_ids[self.index * self.config.batch_size: len(self.dataset)]
+            residue_input_ids = self.input_ids[self.index * self.config.batch_size: self.n_samples]
             residue_token_type_ids = self.token_type_ids[self.index * self.config.batch_size: self.n_samples]
             residue_attention_mask = self.attention_mask[self.index * self.config.batch_size: self.n_samples]
             residue_labels = self.labels[self.index * self.config.batch_size: self.n_samples]
