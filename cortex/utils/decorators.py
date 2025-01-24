@@ -1,39 +1,20 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
+# -*-coding:utf-8 -*-
 '''
-@File    :   utility.py
-@Time    :   2022/05/24 22:22:33
-@Author  :   Rogerspy
-@Email   :   rogerspy@163.com
-@Copyright : Rogerspy
+@File    :   decorators.py
+@Time    :   2023/09/28 11:52:37
+@Author  :   Rogerspy-CSong
+@Version :   1.0
+@Contact :   rogerspy@163.com
+@License :   (C)Copyright 2023-2024, Rogerspy-CSong
 '''
 
-
-"""
-Useful Python decorators for Data Scientists:
-https://bytepawn.com/python-decorators-for-data-scientists.html?continueFlag=b37a171017f2251272527cb6fc2d9751
-"""
-
-
-import sys
-from typing import *
-from time import sleep, time
-from random import seed
-from io import StringIO
+from typing import Callable
 from sys import settrace
-from random import randint
-from math import log, floor
-from itertools import chain
-from functools import reduce
-from socket import gethostname
 from joblib import Parallel, delayed
 from multiprocessing import cpu_count
-from contextlib import redirect_stdout
 from timeit import default_timer as timer
 from multiprocessing.pool import ThreadPool
-
-
-import unicodedata
 
 
 def parallel(
@@ -169,54 +150,3 @@ def traceclass(cls: type):
         if callable(getattr(cls, name)) and name != '__class__':
             setattr(cls, name, make_traced(cls, name, getattr(cls, name)))
     return cls
-
-
-def is_whitespace(char):
-    """Checks whether `char` is a whitespace character."""
-    # \t, \n, and \r are technically control characters but we treat them
-    # as whitespace since they are generally considered as such.
-    if char == " " or char == "\t" or char == "\n" or char == "\r":
-        return True
-    cat = unicodedata.category(char)
-    if cat == "Zs":
-        return True
-    return False
-
-
-def is_control(char):
-    """Checks whether `char` is a control character."""
-    # These are technically control characters but we count them as whitespace
-    # characters.
-    if char == "\t" or char == "\n" or char == "\r":
-        return False
-    cat = unicodedata.category(char)
-    if cat.startswith("C"):
-        return True
-    return False
-
-
-def is_punctuation(char):
-    """Checks whether `char` is a punctuation character."""
-    cp = ord(char)
-    # We treat all non-letter/number ASCII as punctuation.
-    # Characters such as "^", "$", and "`" are not in the Unicode
-    # Punctuation class but we treat them as punctuation anyways, for
-    # consistency.
-    if (cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126):
-        return True
-    cat = unicodedata.category(char)
-    if cat.startswith("P"):
-        return True
-    return False
-
-
-def is_end_of_word(text):
-    """Checks whether the last character in text is one of a punctuation, control or whitespace character."""
-    last_char = text[-1]
-    return bool(is_control(last_char) | is_punctuation(last_char) | is_whitespace(last_char))
-
-
-def is_start_of_word(text):
-    """Checks whether the first character in text is one of a punctuation, control or whitespace character."""
-    first_char = text[0]
-    return bool(is_control(first_char) | is_punctuation(first_char) | is_whitespace(first_char))
